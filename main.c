@@ -10,6 +10,8 @@
 
 short int dfn[MAX_VERTICES];
 short int low[MAX_VERTICES];
+int num;
+int n;
 
 // p.18 adjacency list representation 
 typedef struct node* node_pointer;
@@ -25,8 +27,6 @@ typedef struct edge {
 	edge_pointer link;
 }edge;
 
-int num;
-int n;
 node_pointer* graph;
 edge_pointer top;
 
@@ -154,7 +154,7 @@ void delete(edge_pointer top, int* x, int* y) {
 	*y = edge->w;
 	top->link = edge->link;
 	edge->link = NULL;
-	//free(edge);
+	free(edge);
 }
 
 void bicon(int u, int v) {
@@ -164,32 +164,43 @@ void bicon(int u, int v) {
 	for (ptr = graph[u]; ptr; ptr = ptr->link) {
 		w = ptr->vertex;
 		printf("v: %d\tu: %d\tw:%d\n", v, u, w);
-		if (v != w && dfn[w] < dfn[u]) { /* add edge to stack */
-			// ...
-			// w가 u의 자식노드라면...
-			//_add(u, w);
+		if (v != w && dfn[w] < dfn[u]) 
+		{ 
+			/* add edge to stack */
+			// v(== w) - u로 된 cycle이 아니고
+			// u에 독립적으로 연결된 자식노드(dfn[w] == -1) 이거나
+			// u에서 w로 가는 backedge가 존재하면(bi-connected)
 			add(top, u, w);
 		}
 		if (dfn[w] < 0)
 		{ /* w is an unvisited vertex */
-			bicon(w, u);
-			low[u] = MIN2(low[u], low[w]);
+			// u의 자식노드인 w에 연결된 노드를 검사하여 low[w]를 업데이트 한다.
+			// 재귀함수 [bicon]을 탈출하면: stack에서 pop되면...
 			// dfnlow 호출 후 업데이트 된 low[w]와 비교하여 low[u]를 업데이트한다.
-			if (low[w] >= dfn[u])
+			bicon(w, u);
+			// 손자 노드가 없거나 backedge가 없는 노드(u)는 dfn과 low의 초기값(num)을 그대로 갖고있다(v:7 u:9 w:7). 
+			low[u] = MIN2(low[u], low[w]);
+			printf("low[u]: %d\tlow[w]: %d\tlow[u] > low[w]:[%d]\n", low[u], low[w], low[u]>low[w]);
+			if (low[w] >= dfn[u]) //u의 자식노드중에서 u위로 갈수있는 간선이 없다:  u와 w가 bi-connected가 아닌 경우
 			{
 				printf("New biconnected component: ");
 				do
 				{ /* delete edge from stack */
-					//_delete(&x, &y);
 					delete(top, &x, &y);
 					printf("<%d, %d>", x, y);
 				} while (!((x == u) && (y == w)));
 				printf("\n");
 			}
 		}
-		else if (w != v) low[u] = MIN2(low[u], dfn[w]);
+		else if (w != v)
+		{
+			printf("low[u]: %d\tdfn[w]: %d\tlow[u] > dfn[w]:[%d]\n", low[u], dfn[w], low[u] > dfn[w]);
+			low[u] = MIN2(low[u], dfn[w]);
+		}
 		// 이미 검사가 끝난 인덱스는 low와 low의 비교는 이미 이뤄짐
 		// low[u]는 다른 연결된 노드에 의해 내려갈수 있는 최대 노드를 가리킨다.
 		// dfn[w]는 새로 확인하는 연결된 노드의 dfn을 확인한다.
+		// 정점을 검사할때 첫번째 검사는 u, w모두 자기자신이다.
+		// u의 자식노드인 w의 dfn값이 u의 low값 보다 작으려면 u와 w를 잇는 backedge가 필요하다.
 	}
 }
